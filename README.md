@@ -48,7 +48,9 @@ THIS IS NOT A PLUGIN. Class used by the other plugins of the package.
 
 ## Compiled classes
 
-For the user's convenience, we provide the compiled classes in directory /target/production. To build the source code, one needs the library jidbm.jar that is provided with DB-MAIN. See more in JIDBM reference manual provided with DB-MAIN. 
+For the user's convenience, we provide the compiled classes in directory /target/production. To build the source code, one needs the library jidbm.jar that is provided with DB-MAIN. See more in JIDBM reference manual provided with DB-MAIN.
+
+_Troubleshooting: if the plugins don't launch, put them in the same directory as the DB-MAIN project (.lun file)._  
 
 ## Authors
 
