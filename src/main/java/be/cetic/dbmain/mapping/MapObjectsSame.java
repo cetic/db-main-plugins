@@ -11,7 +11,6 @@ import java.util.Vector;
 public class MapObjectsSame {
     public static void runDBM() {
         try {
-            Vector<DBMGenericObject> selectedObjects = new Vector<>();
             new DBMConsole();
             // Create the DBMLibrary instance
             DBMLibrary lib = new DBMLibrary();
@@ -23,18 +22,15 @@ public class MapObjectsSame {
             DBMSchema masterSchema = null;
             DBMSchema slaveSchema = null;
             while (sch != null) {
-                if (sch.getVersion().equals("Master")) {
+                if (sch.getVersion().equals("Mapping")) {
                     masterSchema = sch;
-                } else if (sch.getVersion().equals("Slave")) {
-                    slaveSchema = sch;
                 }
                 sch = pro.getNextProductSchema(sch);
             }
-            if (masterSchema == null || slaveSchema == null) {
-                System.out.println("Error: Could not find master and/or slave schema.");
+            if (masterSchema == null) {
+                System.out.println("Error: Could not find mapping schema.");
             } else {
-                selectedObjects.addAll(masterSchema.getSelectedObjects());
-                selectedObjects.addAll(slaveSchema.getSelectedObjects());
+                Vector<DBMGenericObject> selectedObjects = new Vector<>(masterSchema.getSelectedObjects());
                 if (selectedObjects.size() > 0) {
                     Object[] MappingOID = new Object[selectedObjects.size()];
                     int i = 0;
@@ -49,7 +45,7 @@ public class MapObjectsSame {
                     System.out.println(selectedObjects.size() + " objects mapped.");
                 }
             }
-       } catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

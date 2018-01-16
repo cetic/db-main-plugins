@@ -6,12 +6,14 @@ import javax.swing.*;
 import java.io.File;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Vector;
 
 public class MappingReportSame {
     private static PrintWriter fw = null;
-    private static DBMSchema masterSchema;
-    private static DBMSchema slaveSchema;
+    private static DBMSchema mappingSchema;
+    private static Mapping mapping;
 
     /**
      * Method called by DB-MAIN to generate a CSV file containing the mapping between "Master" and "Slave" schemas.
@@ -27,19 +29,17 @@ public class MappingReportSame {
             // Get the schemas
             DBMSchema sch = pro.getFirstProductSchema();
             while (sch != null) {
-                if (sch.getVersion().equals("Master")) {
-                    masterSchema = sch;
-                } else if (sch.getVersion().equals("Slave")) {
-                    slaveSchema = sch;
+                if (sch.getVersion().equals("Mapping")) {
+                    mappingSchema = sch;
                 }
                 sch = pro.getNextProductSchema(sch);
             }
-            if (masterSchema == null || slaveSchema == null) {
-                System.out.println("Error: Could not find master and/or slave schema.");
+            if (mappingSchema == null) {
+                System.out.println("Error: Could not find mapping schema.");
             } else {
                 // Create a new CSV file
                 JFileChooser fc = new JFileChooser();
-                fc.setSelectedFile(new File("mapping.csv"));
+                fc.setSelectedFile(new File("mapping_ar.csv"));
                 int rVal = fc.showSaveDialog(null);
                 if (rVal == JFileChooser.APPROVE_OPTION) {
                     try {
@@ -53,47 +53,21 @@ public class MappingReportSame {
                     return;
                 }
                 // Mapping
-                System.out.println("Master schema: " + masterSchema.getName());
-                System.out.println("Slave schema: " + slaveSchema.getName());
-                fw.println("MAPPING ID;MASTER TYPE;MASTER NAME;MASTER PARENT;MASTER COLUMN TYPE;MASTER MANDATORY;SLAVE TYPE;SLAVE NAME;SLAVE PARENT;SLAVE COLUMN TYPE;SLAVE MANDATORY");
-                Mapping mapping = new Mapping(masterSchema, slaveSchema);
+                System.out.println("Mapping schema: " + mappingSchema.getName());
+                mapping = new Mapping(mappingSchema, mappingSchema);
                 ArrayList<DBMDataObject> groupedDataObjects = new ArrayList<>();
                 Integer groupId = 1;
-                // master schema
-                DBMDataObject datao = masterSchema.getFirstDataObject();
-                while (datao != null) {
-                    if (!groupedDataObjects.contains(datao)) {
-                        Vector<DBMDataObject> dataObjectsMaster = mapping.findMappingDataObject(datao, masterSchema);
-                        Vector<DBMDataObject> dataObjectsSlave = mapping.findMappingDataObject(datao, slaveSchema);
-                        if (dataObjectsMaster.size() > 1 || dataObjectsSlave.size() > 1) {
-                            // mapping N-N
-                            groupedDataObjects.addAll(dataObjectsMaster);
-                            groupedDataObjects.addAll(dataObjectsSlave);
-                            displayGroup(groupId, dataObjectsMaster, dataObjectsSlave);
-                        } else if (dataObjectsMaster.size() > 0 && dataObjectsSlave.size() > 0) {
-                            // mapping 1-1
-                            DBMDataObject masterDatao = dataObjectsMaster.firstElement();
-                            DBMDataObject slaveDatao = dataObjectsSlave.firstElement();
-                            groupedDataObjects.add(masterDatao);
-                            groupedDataObjects.add(slaveDatao);
-                            displayDatao(groupId, masterDatao, slaveDatao);
-                        } else {
-                            // no mapping
-                            displayDatao(groupId, datao, null);
+                DBMEntityType entityType = mappingSchema.getFirstDataObjectEntityType();
+                while (entityType != null) {
+                    if (!groupedDataObjects.contains(entityType)) {
+                        Vector<DBMDataObject> dataObjects = mapping.findMappingDataObject(entityType, mappingSchema);
+                        if (dataObjects.size() > 1) {
+                            groupedDataObjects.addAll(dataObjects);
+                            displayGroup(groupId, dataObjects);
+                            groupId++;
                         }
-                        groupId++;
                     }
-                    datao = masterSchema.getNextDataObject(datao);
-                }
-                // slave schema: remaining data objects, not mapped with master schema objects
-                datao = slaveSchema.getFirstDataObject();
-                while (datao != null) {
-                    if (!groupedDataObjects.contains(datao)) {
-                        // no mapping
-                        displayDatao(groupId, null, datao);
-                        groupId++;
-                    }
-                    datao = slaveSchema.getNextDataObject(datao);
+                    entityType = mappingSchema.getNextDataObjectEntityType(entityType);
                 }
                 // Close the CSV file
                 fw.close();
@@ -105,35 +79,74 @@ public class MappingReportSame {
         }
     }
 
-    private static void displayGroup(Integer groupId, Vector<DBMDataObject> masterDataObjects, Vector<DBMDataObject> slaveDataObjects) {
-        String groupData = "[GROUP];[GROUP];[GROUP];[GROUP];[GROUP]";
-        for (DBMDataObject datao : masterDataObjects) {
-            DataObject dataObject = new DataObject(datao);
-            fw.println(groupId + ";" + dataObject.toCSV() + ";" + groupData);
-        }
-        for (DBMDataObject datao : slaveDataObjects) {
-            DataObject dataObject = new DataObject(datao);
-            fw.println(groupId + ";" + groupData + ";" + dataObject.toCSV());
-        }
-    }
+    private static void displayGroup(Integer groupId, Vector<DBMDataObject> masterDataObjects) {
+        ArrayList<DBMAttribute> managedAttributes = new ArrayList<>();
 
-    private static void displayDatao(Integer groupId, DBMDataObject masterDatao, DBMDataObject slaveDatao) {
-        String masterData;
-        String slaveData;
-        String noMappingData = "[NO MAPPING];[NO MAPPING];[NO MAPPING];[NO MAPPING];[NO MAPPING]";
-        if (masterDatao != null) {
-            DataObject master = new DataObject(masterDatao);
-            masterData = master.toCSV();
-        } else {
-            masterData = noMappingData;
+        HashMap<String, ArrayList<DBMAttribute>> mappingHashMap = new HashMap<>();
+
+        int i = 0;
+        while (i < masterDataObjects.size() - 1) {
+            DBMEntityType firstEntityType = (DBMEntityType) masterDataObjects.get(i);
+            DBMAttribute siatt = firstEntityType.getFirstAttribute();
+            while (siatt != null) {
+                if (!managedAttributes.contains(siatt)) {
+                    ArrayList<DBMAttribute> mappingList = new ArrayList<>();
+                    for (int k = 0; k < i; k++) {
+                        mappingList.add(null);
+                    }
+                    mappingList.add(siatt);
+                    int j = i + 1;
+                    while (j < masterDataObjects.size()) {
+                        DBMEntityType nextEntityType = (DBMEntityType) masterDataObjects.get(j);
+                        DBMAttribute nextsiatt = nextEntityType.getFirstAttribute();
+                        boolean found = false;
+                        while (nextsiatt != null) {
+                            if (!managedAttributes.contains(nextsiatt) && nextsiatt.getName().equals(siatt.getName())) {
+                                mappingList.add(nextsiatt);
+                                found = true;
+                                managedAttributes.add(nextsiatt);
+                            }
+                            nextsiatt = nextEntityType.getNextAttribute(nextsiatt);
+                        }
+                        if (!found) {
+                            mappingList.add(null);
+                        }
+                        j++;
+                    }
+                    mappingHashMap.put(siatt.getName(), mappingList);
+                }
+                siatt = firstEntityType.getNextAttribute(siatt);
+            }
+            i++;
         }
-        if (slaveDatao != null) {
-            DataObject slave = new DataObject(slaveDatao);
-            slaveData = slave.toCSV();
-        } else {
-            slaveData = noMappingData;
+
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("===== ").append(groupId).append(" =====").append(System.getProperty("line.separator"));
+        // headers: table names
+        for (DBMDataObject datao : masterDataObjects) {
+            sb.append(";").append(datao.getName());
         }
-        fw.println(groupId + ";" + masterData + ";" + slaveData);
+        sb.append(System.getProperty("line.separator"));
+
+        // one line by column
+        for (Map.Entry<String, ArrayList<DBMAttribute>> entry : mappingHashMap.entrySet()) {
+            String key = entry.getKey();
+            ArrayList<DBMAttribute> listAtt = entry.getValue();
+
+            sb.append(key);
+            for (DBMAttribute att : listAtt) {
+                if (att == null) {
+                    sb.append(";-");
+                } else {
+                    DataObject dataObject = new DataObject(att);
+                    sb.append(";").append(dataObject.attributeDefinition());
+                }
+            }
+            sb.append(System.getProperty("line.separator"));
+        }
+
+        fw.println(sb);
     }
 
 }

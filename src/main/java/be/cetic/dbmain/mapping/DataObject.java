@@ -107,5 +107,9 @@ class DataObject {
     String toCSV() {
         return dataoType + ";" + this.datao.getName() + ";" + this.parent + ";" + attributeType + ";" + mandatory;
     }
+
+    String attributeDefinition() {
+        return attributeType + " " + mandatory;
+    }
 }
 
