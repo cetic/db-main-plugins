@@ -13,7 +13,6 @@ import java.util.Vector;
 public class MappingReportSame {
     private static PrintWriter fw = null;
     private static DBMSchema mappingSchema;
-    private static Mapping mapping;
 
     /**
      * Method called by DB-MAIN to generate a CSV file containing the mapping between "Master" and "Slave" schemas.
@@ -54,18 +53,16 @@ public class MappingReportSame {
                 }
                 // Mapping
                 System.out.println("Mapping schema: " + mappingSchema.getName());
-                mapping = new Mapping(mappingSchema, mappingSchema);
+                Mapping mapping = new Mapping(mappingSchema, mappingSchema);
                 ArrayList<DBMDataObject> groupedDataObjects = new ArrayList<>();
                 Integer groupId = 1;
                 DBMEntityType entityType = mappingSchema.getFirstDataObjectEntityType();
                 while (entityType != null) {
                     if (!groupedDataObjects.contains(entityType)) {
                         Vector<DBMDataObject> dataObjects = mapping.findMappingDataObject(entityType, mappingSchema);
-                        if (dataObjects.size() > 1) {
-                            groupedDataObjects.addAll(dataObjects);
-                            displayGroup(groupId, dataObjects);
-                            groupId++;
-                        }
+                        groupedDataObjects.addAll(dataObjects);
+                        displayGroup(groupId, dataObjects);
+                        groupId++;
                     }
                     entityType = mappingSchema.getNextDataObjectEntityType(entityType);
                 }
@@ -79,14 +76,14 @@ public class MappingReportSame {
         }
     }
 
-    private static void displayGroup(Integer groupId, Vector<DBMDataObject> masterDataObjects) {
+    private static void displayGroup(Integer groupId, Vector<DBMDataObject> dataObjects) {
         ArrayList<DBMAttribute> managedAttributes = new ArrayList<>();
 
         HashMap<String, ArrayList<DBMAttribute>> mappingHashMap = new HashMap<>();
 
         int i = 0;
-        while (i < masterDataObjects.size() - 1) {
-            DBMEntityType firstEntityType = (DBMEntityType) masterDataObjects.get(i);
+        while (i < dataObjects.size()) {
+            DBMEntityType firstEntityType = (DBMEntityType) dataObjects.get(i);
             DBMAttribute siatt = firstEntityType.getFirstAttribute();
             while (siatt != null) {
                 if (!managedAttributes.contains(siatt)) {
@@ -96,8 +93,8 @@ public class MappingReportSame {
                     }
                     mappingList.add(siatt);
                     int j = i + 1;
-                    while (j < masterDataObjects.size()) {
-                        DBMEntityType nextEntityType = (DBMEntityType) masterDataObjects.get(j);
+                    while (j < dataObjects.size()) {
+                        DBMEntityType nextEntityType = (DBMEntityType) dataObjects.get(j);
                         DBMAttribute nextsiatt = nextEntityType.getFirstAttribute();
                         boolean found = false;
                         while (nextsiatt != null) {
@@ -124,7 +121,7 @@ public class MappingReportSame {
         StringBuilder sb = new StringBuilder();
         sb.append("===== ").append(groupId).append(" =====").append(System.getProperty("line.separator"));
         // headers: table names
-        for (DBMDataObject datao : masterDataObjects) {
+        for (DBMDataObject datao : dataObjects) {
             sb.append(";").append(datao.getName());
         }
         sb.append(System.getProperty("line.separator"));
