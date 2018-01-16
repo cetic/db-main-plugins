@@ -1,6 +1,6 @@
 # DB-MAIN mapping plugins
 
-This project contains DB-MAIN plugins used to manage the mapping between schemas. 
+This project contains DB-MAIN plugins used to manage the mapping between schemas or between tables inside a schema. 
 
 ## Prerequisites
 
@@ -13,22 +13,24 @@ To launch a plugin in DB-MAIN:
 
 ## Description of the plugins 
 
-The plugins of this project are meant to be launched on a DB-MAIN project containing at least two schemas, one with the "Master" version and the other one with the "Slave" version.
+### Mapping between two schemas
+
+This plugins are meant to be launched on a DB-MAIN project containing at least two schemas, one with the "Master" version and the other one with the "Slave" version.
 They essentially use the predefined "MappingOID" metaproperty of the objects (entity types (or tables) and attributes (or columns)).
 
-### InitializeMappingOID
+#### InitializeMappingOID
 
-Initialize the MappingOID metaproperty of the master and slave schemas with their object identifier. 
+Initialize the MappingOID metaproperty of the objects of master and slave schemas with their object identifier. 
 
-### MapObjects
+#### MapObjects
 
 Map selected (groups of) objects in master and slave schemas.
 
-### UnmapObjects
+#### UnmapObjects
 
 Unmap selected objects in master and slave schemas by reinitializing the MappingOID property with their object identifier.
 
-### MappingReport
+#### MappingReport
 
 Generates a CSV file containing the mapping report between master and slave schemas. The report has 11 columns: 
 * MAPPING ID: all objects (tables and columns) with the same MAPPING ID are mapped together.
@@ -41,6 +43,27 @@ Generates a CSV file containing the mapping report between master and slave sche
 Special values:
 * GROUP indicates a N-N mapping : masters and slaves form a group identified by MAPPING ID.
 * NO MAPPING indicates that the master or the slave has no mapped object in the slave or master schema.
+
+### Mapping inside one schema
+
+This plugins are meant to be launched on a DB-MAIN project containing at least one schema with the "Mapping" version.
+They essentially use the predefined "MappingOID" metaproperty of the tables.
+
+#### InitializeMappingOIDSame
+
+Initialize the MappingOID metaproperty of objects in the mapping schema with their object identifier. 
+
+#### MapObjectsSame
+
+Map selected tables in mapping schema.
+
+#### MappingReportSame
+
+Generates a CSV file containing the mapping report between tables of mapping schema. The file is divided in sections. Each section contains one mapping report:
+* line 1, columns 2 to N: mapped table names (only one if the table doesn't map)
+* lines 2 to N: union of columns of the mapped tables
+    * column 1: name of the column
+    * column 2 to N: type of the column in the corresponding table (cf. line 1)
 
 ### DataObject
 
